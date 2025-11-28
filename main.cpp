@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <chrono>
+#include <thread>
 #include "calculator.h"
 
 int main() {
@@ -28,9 +29,12 @@ int main() {
     // 1. 并行计算多个数的阶乘
     std::cout << "\n1. 并行计算阶乘:" << std::endl;
     std::vector<int> factNumbers = {5, 10, 15, 20, 7, 12};
+    // 开始时间
     auto start = std::chrono::high_resolution_clock::now();
     std::vector<long long> factResults = calc.parallelFactorial(factNumbers, 4);
+    // 结束时间
     auto end = std::chrono::high_resolution_clock::now();
+    // 计算时间
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     
     for (size_t i = 0; i < factNumbers.size(); ++i) {
@@ -41,11 +45,15 @@ int main() {
     // 2. 并行判断多个数是否为质数
     std::cout << "\n2. 并行判断质数:" << std::endl;
     std::vector<int> primeNumbers = {17, 20, 23, 29, 31, 100, 101, 97};
+    // 开始时间
     start = std::chrono::high_resolution_clock::now();
+    // 并行判断多个数是否为质数
     std::vector<bool> primeResults = calc.parallelIsPrime(primeNumbers, 4);
+    // 结束时间
     end = std::chrono::high_resolution_clock::now();
+    // 计算时间
     duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    
+
     for (size_t i = 0; i < primeNumbers.size(); ++i) {
         std::cout << "  " << primeNumbers[i] << " 是质数? " 
                   << (primeResults[i] ? "是" : "否") << std::endl;
@@ -55,9 +63,13 @@ int main() {
     // 3. 并行计算多个数的平方
     std::cout << "\n3. 并行计算平方:" << std::endl;
     std::vector<double> squareNumbers = {2.5, 5.0, 7.5, 10.0, 12.5, 15.0};
+    // 开始时间
     start = std::chrono::high_resolution_clock::now();
+    // 并行计算多个数的平方
     std::vector<double> squareResults = calc.parallelSquare(squareNumbers, 4);
+    // 结束时间
     end = std::chrono::high_resolution_clock::now();
+    // 计算时间
     duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     
     for (size_t i = 0; i < squareNumbers.size(); ++i) {
@@ -70,9 +82,13 @@ int main() {
     std::vector<std::pair<double, double>> addPairs = {
         {10, 5}, {20, 15}, {30, 25}, {40, 35}, {50, 45}
     };
+    // 开始时间
     start = std::chrono::high_resolution_clock::now();
+    // 并行执行多个加法运算
     std::vector<double> addResults = calc.parallelAdd(addPairs, 4);
+    // 结束时间
     end = std::chrono::high_resolution_clock::now();
+    // 计算时间
     duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     
     for (size_t i = 0; i < addPairs.size(); ++i) {

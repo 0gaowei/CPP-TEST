@@ -2,10 +2,11 @@
 #define CALCULATOR_H
 
 #include <vector>
-#include <future>
-#include <thread>
-#include <mutex>
-#include <atomic>
+#include <future>   // 异步任务
+#include <thread>   // 线程
+#include <mutex>    // 互斥锁
+#include <atomic>   // 原子操作
+#include <utility>  // 实用工具
 
 class Calculator {
 private:

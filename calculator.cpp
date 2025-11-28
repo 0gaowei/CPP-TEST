@@ -1,9 +1,9 @@
 #include "calculator.h"
-#include <stdexcept>
-#include <cmath>
-#include <algorithm>
-#include <chrono>
-#include <iostream>
+#include <stdexcept>    // 异常处理
+#include <cmath>        // 数学函数
+#include <algorithm>    // 算法函数
+#include <chrono>       // 时间函数
+#include <iostream>     // 输入输出流
 
 // 加法
 double Calculator::add(double a, double b) {
@@ -189,10 +189,10 @@ void Calculator::parallelBatchCompute(const std::vector<int>& numbers, int threa
             {
                 std::lock_guard<std::mutex> lock(printMtx);
                 std::cout << "线程 " << std::this_thread::get_id() 
-                         << ": 数字 " << n 
-                         << " - 阶乘=" << fact 
-                         << ", 质数=" << (prime ? "是" : "否")
-                         << ", 平方=" << sq << std::endl;
+                          << ": 数字 " << n 
+                          << " - 阶乘=" << fact 
+                          << ", 质数=" << (prime ? "是" : "否")
+                          << ", 平方=" << sq << std::endl;
             }
         }
     };
