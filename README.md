@@ -2,7 +2,7 @@
 
 ## 项目说明
 
-本项目是一个**多线程C++计算器程序**，包含基本的数学运算功能和并行计算能力，并使用C++Test进行单元测试（包括多线程测试）。
+本项目是一个**多线程C++计算器程序**，包含基本的数学运算功能和并行计算能力，并配套自研的 Simple Quality Suite（Python 脚本）完成自动化测试、覆盖率与静态分析。
 
 ## 项目结构
 
@@ -11,9 +11,9 @@ CPP-TEST/
 ├── calculator.h          # 计算器类头文件
 ├── calculator.cpp        # 计算器类实现文件
 ├── main.cpp              # 主程序入口
-├── CalculatorTest.cpp    # C++Test测试用例文件
+├── CalculatorTest.cpp    # 手写回归测试
 ├── Makefile              # 编译配置文件
-├── cpptest.properties    # C++Test配置文件
+├── tools/                # 自研质量工具与依赖脚本
 └── README.md             # 本说明文档
 ```
 
@@ -80,9 +80,9 @@ make runtest
 make clean
 ```
 
-## 轻量级质量保障（无需 Parasoft）
+## 自研质量工具（Simple Quality Suite）
 
-在未安装 Parasoft C++Test 的环境下，可使用项目内置的 Python 脚本完成**自动测试生成 + 覆盖率统计 + 静态分析 + HTML/XML 报告**：
+一条命令即可完成**测试生成 → 测试执行 → 覆盖率统计 → 静态分析 → 报告导出**：
 
 ```bash
 # 生成测试、执行并输出报告
@@ -95,171 +95,29 @@ python3 tools/simple_quality_suite.py
 #   --skip-static    仅运行测试与覆盖率
 ```
 
-执行完成后将得到：
+执行后常见输出：
 
-- `tests/generated_tests.cpp`：自动生成的 199 个断言用例，覆盖所有串行/并行 API。
-- `tests/generated_tests.json`：生成用例的元数据（输入、期望值、随机种子）。
-- `reports/tests/results.json`：测试执行统计（总数、失败数、失败详情）。
-- `reports/coverage/summary.json` 与 `reports/coverage/calculator.cpp.gcov`：语句/分支/函数覆盖率（当前为 98.33% / 98.44% / 100%）。
-- `reports/static/static_analysis.json`：静态分析报告。脚本优先调用 `cppcheck`，若系统未安装则会执行内置启发式扫描。
-- `reports/quality_summary.html`、`reports/quality_summary.xml`：便于查阅或归档的综合报告（文件在 `.gitignore` 中默认忽略，可自行复制出来）。
+- `tests/generated_tests.cpp/json`：随机+手工混合的 199 个断言及元数据；
+- `reports/tests/results.json`：测试总数/失败数/失败样例；
+- `reports/coverage/summary.json` + `.gcov`：语句/分支/函数覆盖率（默认 98%+/100%）；
+- `reports/static/static_analysis.json`：静态分析结果（cppcheck 或启发式）；
+- `reports/quality_summary.html|xml`：适合上交或存档的汇总报告。
 
-脚本默认使用 `g++/gcov`，可通过 `--compiler=clang++` 等参数切换。所有输出均保存在 `reports/` 目录中（已自动忽略在 Git 之外），便于集成到 CI 或生成附件交付。
+脚本默认使用 `g++/gcov`，可通过 `--compiler=clang++` 指定其他编译器。所有输出集中在 `reports/` 目录，方便纳入 CI。
 
-## 使用Parasoft C++Test进行测试
+## 手写测试文件
 
-### 方法一：使用C++Test图形界面
+- `CalculatorTest.cpp`：保留一组人工维护的回归测试，可与自研脚本生成的测试共存。
+- `tests/generated_tests.cpp`：运行脚本自动覆盖串行/并行 API。若需重新生成只需删除该文件或使用默认命令。
 
-1. **打开C++Test**
-   - 启动Parasoft C++Test IDE
-
-2. **创建新项目**
-   - File → New → C++ Project
-   - 选择项目类型：Executable
-   - 项目名称：CalculatorProject
-   - 选择项目位置：当前目录
-
-3. **导入源代码**
-   - 将以下文件添加到项目：
-     - `calculator.h`
-     - `calculator.cpp`
-     - `main.cpp`
-     - `CalculatorTest.cpp`
-
-4. **配置测试**
-   - 右键点击项目 → Properties → C++Test
-   - 或点击测试三角形图标右侧的下拉菜单 → 测试配置
-   - 选择"用户自定义" → 点击"新建"
-   - 配置名称：执行测试用例
-   - 在"静态"选项卡中，取消勾选"启动静态分析"
-   - 在"执行"选项卡中：
-     - 勾选"启动测试执行"
-     - 插桩模式：选择"插桩"
-     - 覆盖率指标：选择"语句覆盖率"、"分支覆盖率"、"函数覆盖率"
-
-5. **执行测试**
-   - 选择测试配置
-   - 点击运行按钮（绿色三角形）
-   - C++Test将自动执行所有测试用例
-
-6. **查看测试报告**
-   - 测试完成后，在C++Test视图中查看测试结果
-   - 可以查看：
-     - 测试用例执行情况
-     - 代码覆盖率报告
-     - 测试通过/失败统计
-
-### 方法二：使用C++Test命令行
-
-```bash
-# 设置C++Test环境变量（根据实际安装路径调整）
-export CPPTEST_HOME=/path/to/parasoft/cpptest
-
-# 运行测试
-$CPPTEST_HOME/cpptestcli \
-  -config cpptest.properties \
-  -compiler gcc \
-  -source calculator.cpp \
-  -source CalculatorTest.cpp \
-  -include . \
-  -report report.html
-```
-
-### 方法三：使用配置文件
-
-1. 使用提供的`cpptest.properties`配置文件
-2. 在C++Test中导入该配置文件
-3. 执行测试
-
-## 测试用例说明
-
-`CalculatorTest.cpp`包含以下测试用例：
-
-### 单线程功能测试（1-9）
-
-1. **testAdd()** - 测试加法功能
-   - 正数相加
-   - 负数相加
-   - 零值测试
-   - 浮点数测试
-
-2. **testSubtract()** - 测试减法功能
-   - 正数相减
-   - 负数相减
-   - 零值测试
-   - 浮点数测试
-
-3. **testMultiply()** - 测试乘法功能
-   - 正数相乘
-   - 负数相乘
-   - 零值测试
-   - 浮点数测试
-
-4. **testDivide()** - 测试除法功能
-   - 正常除法
-   - 除零异常测试
-
-5. **testSquare()** - 测试平方功能
-   - 正数平方
-   - 负数平方
-   - 零值测试
-   - 浮点数测试
-
-6. **testFactorial()** - 测试阶乘功能
-   - 边界值测试（0, 1）
-   - 正常值测试
-   - 负数异常测试
-
-7. **testIsPrime()** - 测试质数判断
-   - 质数测试
-   - 非质数测试
-   - 边界值测试
-
-8. **testGcd()** - 测试最大公约数
-   - 正常值测试
-   - 边界值测试（0值）
-   - 负数测试
-
-9. **testLcm()** - 测试最小公倍数
-   - 正常值测试
-   - 边界值测试（0值）
-
-### 多线程功能测试（10-15）
-
-10. **testParallelFactorial()** - 测试并行计算阶乘
-    - 验证多个数的阶乘并行计算结果正确性
-
-11. **testParallelIsPrime()** - 测试并行判断质数
-    - 验证多个数的质数判断并行计算结果正确性
-
-12. **testParallelSquare()** - 测试并行计算平方
-    - 验证多个数的平方并行计算结果正确性
-
-13. **testParallelAdd()** - 测试并行加法
-    - 验证多个加法运算并行计算结果正确性
-
-14. **testThreadSafeCounter()** - 测试线程安全计数器
-    - 创建10个线程，每个线程调用100次add函数
-    - 验证原子计数器的线程安全性
-    - 验证总调用次数为1000
-
-15. **testConcurrentAccess()** - 测试并发访问（压力测试）
-    - 创建8个线程，每个线程执行50次不同操作
-    - 测试多线程环境下的并发安全性
-    - 验证程序在并发访问下的稳定性
-
-## 测试覆盖率目标
-
-- **语句覆盖率**：目标 100%
-- **分支覆盖率**：目标 95%以上
-- **函数覆盖率**：目标 100%
+目标覆盖率建议：语句 100%、分支 ≥95%、函数 100%。
 
 ## 注意事项
 
-1. 确保已安装Parasoft C++Test软件
-2. 如果使用命令行方式，需要正确配置环境变量
-3. 测试前确保代码能够正常编译
-4. 建议在测试前先运行`make clean`清理旧的编译文件
+1. 运行脚本前确保 `python3`, `g++`, `gcov` 可用，`cppcheck` 可选。
+2. 如需重新生成测试请删除 `tests/generated_tests.*` 或运行默认命令。
+3. 测试前建议 `make clean` 清理旧的 `.o/.gcda`，避免残留影响覆盖率。
+4. 所有自动生成的报告都在 `reports/`，必要时复制到其他目录再提交。
 
 ## 测试结果分析
 
@@ -274,15 +132,14 @@ $CPPTEST_HOME/cpptestcli \
 
 如果需要更完善的测试，可以考虑：
 
-1. 添加性能测试用例
-2. 添加压力测试用例
-3. 使用更高级的测试框架（如Google Test）
-4. 添加集成测试
-5. 添加回归测试
+1. 添加性能/压力测试，用 `simple_quality_suite.py --skip-static` 自行组合流程。
+2. 将脚本接入 CI（GitHub Actions、Jenkins 等）实现自动化守护。
+3. 使用 Google Test 或 Catch2 替换/补充 `CalculatorTest.cpp`，脚本会自动编译执行。
+4. 将静态分析工具扩展到 `clang-tidy`、`include-what-you-use` 等（脚本接口已留出 `--extra-static-cmd`）。
 
 ## 作者信息
 
 - 项目名称：C++计算器程序测试
-- 测试工具：Parasoft C++Test
+- 质量工具：Simple Quality Suite
 - 创建日期：2024
 
