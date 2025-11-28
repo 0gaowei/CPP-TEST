@@ -80,6 +80,32 @@ make runtest
 make clean
 ```
 
+## 轻量级质量保障（无需 Parasoft）
+
+在未安装 Parasoft C++Test 的环境下，可使用项目内置的 Python 脚本完成**自动测试生成 + 覆盖率统计 + 静态分析 + HTML/XML 报告**：
+
+```bash
+# 生成测试、执行并输出报告
+python3 tools/simple_quality_suite.py
+
+# 可选参数
+#   --skip-generate  跳过重新生成测试
+#   --skip-tests     只做覆盖率/静态分析
+#   --skip-coverage  仅运行测试与静态分析
+#   --skip-static    仅运行测试与覆盖率
+```
+
+执行完成后将得到：
+
+- `tests/generated_tests.cpp`：自动生成的 199 个断言用例，覆盖所有串行/并行 API。
+- `tests/generated_tests.json`：生成用例的元数据（输入、期望值、随机种子）。
+- `reports/tests/results.json`：测试执行统计（总数、失败数、失败详情）。
+- `reports/coverage/summary.json` 与 `reports/coverage/calculator.cpp.gcov`：语句/分支/函数覆盖率（当前为 98.33% / 98.44% / 100%）。
+- `reports/static/static_analysis.json`：静态分析报告。脚本优先调用 `cppcheck`，若系统未安装则会执行内置启发式扫描。
+- `reports/quality_summary.html`、`reports/quality_summary.xml`：便于查阅或归档的综合报告（文件在 `.gitignore` 中默认忽略，可自行复制出来）。
+
+脚本默认使用 `g++/gcov`，可通过 `--compiler=clang++` 等参数切换。所有输出均保存在 `reports/` 目录中（已自动忽略在 Git 之外），便于集成到 CI 或生成附件交付。
+
 ## 使用Parasoft C++Test进行测试
 
 ### 方法一：使用C++Test图形界面

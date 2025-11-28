@@ -14,6 +14,12 @@ cpptest_output/
 cpptest_reports/
 *.html
 *.xml
+reports/
+build/
+*.gcda
+*.gcno
+*.gcov
+build_generated_tests*
 
 # IDE 文件
 .vscode/

@@ -5,6 +5,7 @@ TARGET = calculator
 TEST_TARGET = calculator_test
 SRC_DIR = .
 OBJ_DIR = obj
+QUALITY_SCRIPT = tools/simple_quality_suite.py
 
 # 源文件
 MAIN_SRC = main.cpp
@@ -52,9 +53,13 @@ run: $(TARGET)
 runtest: $(TEST_TARGET)
 	./$(TEST_TARGET)
 
+# 轻量级质量保障（自动测试 + 覆盖率 + 静态分析）
+quality:
+	python3 $(QUALITY_SCRIPT)
+
 # 清理
 clean:
 	rm -rf $(OBJ_DIR) $(TARGET) $(TEST_TARGET)
 
-.PHONY: all test run runtest clean
+.PHONY: all test run runtest quality clean
 

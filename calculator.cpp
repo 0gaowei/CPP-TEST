@@ -121,6 +121,7 @@ std::vector<bool> Calculator::parallelIsPrime(const std::vector<int>& numbers, i
     };
     
     for (size_t i = 0; i < numbers.size(); ++i) {
+        // 创建异步任务，异步执行计算任务
         futures.push_back(std::async(std::launch::async, computeTask, numbers[i]));
     }
     
@@ -171,7 +172,7 @@ std::vector<double> Calculator::parallelAdd(const std::vector<std::pair<double, 
     return results;
 }
 
-// 批量并行计算（混合任务）
+// 批量并行计算（混合任务，包括阶乘、质数、平方）
 void Calculator::parallelBatchCompute(const std::vector<int>& numbers, int threadCount) {
     std::vector<std::thread> threads;
     std::mutex printMtx;  // 用于保护输出
