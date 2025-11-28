@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Lightweight alternative to Parasoft C++Test.
+"""面向本项目的轻量级 C++ 自动化测试/覆盖率/静态分析脚本。
 
-The script autogenerates tests, runs them with coverage flags, collects
-coverage numbers via gcov, performs static analysis (using cppcheck when
-available, otherwise a heuristic fallback) and emits JSON/HTML/XML reports.
+它会自动生成测试、以覆盖率方式编译运行程序、通过 gcov 收集覆盖率数据，
+随后执行静态分析（优先使用 cppcheck，缺失时退回启发式），并输出 JSON/HTML/XML 报告。
 """
 from __future__ import annotations
 
@@ -55,10 +54,10 @@ def run_cmd(cmd: Sequence[str], *, cwd: Path | None = None, check: bool = True) 
 
 def generate_tests(force: bool = False) -> None:
     if not GENERATED_CPP.exists() or force:
-        log("Generating randomized tests ...")
+        log("正在生成随机测试用例 ...")
         run_cmd([sys.executable, str(TOOLS_DIR / "generate_tests.py")])
     else:
-        log("Using existing generated tests")
+        log("复用已存在的测试用例")
 
 
 def compile_tests(compiler: str = "g++") -> None:
@@ -99,16 +98,8 @@ def execute_tests() -> Dict:
     return summary
 
 
-def find_gcov_artifact() -> Path:
-    pattern = f"{BIN_PATH.name}-*.gcno"
-    matches = list(ROOT.glob(pattern)) + list(BUILD_DIR.glob(pattern))
-    if not matches:
-        raise FileNotFoundError(f"No gcno files found for pattern {pattern}")
-    return matches[0]
-
-
 def parse_percentage_line(line: str) -> Dict:
-    # Example: "Lines executed:78.33% of 120"
+    # 样例：“Lines executed:78.33% of 120”
     metric, rest = line.split(":", 1)
     percent_str, _, total_str = rest.partition("% of")
     percent = float(percent_str.strip())
@@ -147,8 +138,25 @@ def parse_function_coverage(gcov_path: Path) -> Dict:
 
 
 def collect_coverage() -> Dict:
-    gcov_artifact = find_gcov_artifact()
-    result = run_cmd(["gcov", "-b", str(gcov_artifact)])
+    pattern = f"{BIN_PATH.name}-*.gcno"
+    matches = list(BUILD_DIR.glob(pattern))
+    if not matches:
+        raise FileNotFoundError(f"未能在 {BUILD_DIR} 中找到符合 {pattern} 的 gcno 文件")
+    gcov_source = matches[0]
+
+    for stale in COVERAGE_DIR.glob("*.gcov"):
+        stale.unlink()
+
+    result = run_cmd(
+        [
+            "gcov",
+            "-b",
+            "-o",
+            str(BUILD_DIR),
+            str(gcov_source),
+        ],
+        cwd=COVERAGE_DIR,
+    )
     coverage = {"lines": {}, "branches": {}, "functions": {}}
     current_file = None
     current_basename = None
@@ -160,10 +168,15 @@ def collect_coverage() -> Dict:
             coverage["lines"] = parse_percentage_line(line)
         elif current_basename == "calculator.cpp" and line.startswith("Branches executed:"):
             coverage["branches"] = parse_percentage_line(line)
-    gcov_file = ROOT / "calculator.cpp.gcov"
+    gcov_file = COVERAGE_DIR / "calculator.cpp.gcov"
     if gcov_file.exists():
         coverage["functions"] = parse_function_coverage(gcov_file)
-        shutil.move(str(gcov_file), COVERAGE_DIR / gcov_file.name)
+    if coverage["lines"]:
+        coverage["lines"]["metric"] = "语句执行率"
+    if coverage["branches"]:
+        coverage["branches"]["metric"] = "分支执行率"
+    if coverage["functions"]:
+        coverage["functions"]["metric"] = "函数覆盖率"
     coverage["timestamp"] = dt.datetime.now(UTC).strftime(TIMESTAMP_FMT)
     (COVERAGE_DIR / "summary.json").write_text(json.dumps(coverage, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return coverage
@@ -180,18 +193,18 @@ def fallback_static_scan(files: Sequence[Path]) -> Dict:
                     "file": str(path.relative_to(ROOT)),
                     "line": None,
                     "severity": "info",
-                    "message": f"Token '{token.strip()}' detected; review manually.",
+                    "message": f"检测到 '{token.strip()}'，请人工复核。",
                 })
     return {
         "tool": "heuristic",
         "issues": findings,
-        "note": "cppcheck not available; ran heuristic scan",
+        "note": "系统缺少 cppcheck，已改为启发式扫描",
     }
 
 
 def run_static_analysis(skip: bool = False) -> Dict:
     if skip:
-        log("Skipping static analysis as requested")
+        log("根据参数跳过静态分析阶段")
         return {"tool": "skipped", "issues": []}
 
     cppcheck = shutil.which("cppcheck")
@@ -288,7 +301,7 @@ def render_xml(test_summary: Dict, coverage: Dict, static_result: Dict) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Simple C++ testing/coverage/static-analysis pipeline")
+    parser = argparse.ArgumentParser(description="C++ 测试/覆盖率/静态分析一体化流水线")
     parser.add_argument("--skip-generate", action="store_true", help="跳过测试用例自动生成")
     parser.add_argument("--skip-tests", action="store_true", help="跳过测试执行阶段")
     parser.add_argument("--skip-coverage", action="store_true", help="跳过覆盖率统计")
