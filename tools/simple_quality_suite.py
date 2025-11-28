@@ -15,6 +15,11 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Sequence
 
+try:
+    from tqdm.auto import tqdm
+except ImportError:  # pragma: no cover - 仅在环境缺少 tqdm 时触发
+    tqdm = None
+
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS_DIR = ROOT / "tools"
 TESTS_DIR = ROOT / "tests"
@@ -32,7 +37,7 @@ UTC = dt.timezone.utc
 
 COMMAND_PREFIX = "[quality-suite]"
 
-
+ 
 def log(message: str) -> None:
     print(f"{COMMAND_PREFIX} {message}")
 
@@ -78,6 +83,21 @@ def compile_tests(compiler: str = "g++") -> None:
 
 
 def execute_tests() -> Dict:
+    """执行测试用例，并返回测试结果。
+    具体来说，会执行以下步骤：
+    1. 执行测试用例
+    2. 解析测试用例的输出
+    3. 解析测试用例的错误信息
+    4. 返回测试结果
+
+    返回值是一个字典，包含以下键：
+    - total: 总测试数
+    - failed: 失败测试数
+    - passed: 通过测试数
+    - success: 是否成功
+    - failures: 失败测试的错误信息
+    - stdout: 标准输出
+    """
     result = subprocess.run([str(BIN_PATH)], cwd=ROOT, text=True, capture_output=True)
     stdout = result.stdout.strip().splitlines()
     stderr_lines = [line for line in result.stderr.splitlines() if line.strip()]
@@ -309,24 +329,42 @@ def main() -> None:
     parser.add_argument("--compiler", default="g++", help="自定义编译器 (默认 g++)")
     args = parser.parse_args()
 
-    ensure_dirs()
-    if not args.skip_generate:
-        generate_tests()
-    compile_tests(compiler=args.compiler)
-    if args.skip_tests:
-        test_summary = {"total": 0, "failed": 0, "passed": 0, "success": False, "failures": []}
-    else:
-        test_summary = execute_tests()
+    total_steps = 8
+    progress = tqdm(total=total_steps, desc="质量流程", unit="阶段") if tqdm else None
 
-    if args.skip_coverage:
-        coverage = {"lines": {}, "branches": {}, "functions": {}}
-    else:
-        coverage = collect_coverage()
+    def run_step(label: str, func):
+        log(label)
+        if progress is not None:
+            progress.set_postfix_str(label)
+        result = func()
+        if progress is not None:
+            progress.update(1)
+        return result
 
-    static_result = run_static_analysis(skip=args.skip_static)
-
-    render_html(test_summary, coverage, static_result)
-    render_xml(test_summary, coverage, static_result)
+    try:
+        run_step("准备目录", ensure_dirs)
+        if not args.skip_generate:
+            run_step("生成随机测试", generate_tests)
+        else:
+            run_step("跳过测试生成", lambda: None)
+        run_step("编译自动化测试", lambda: compile_tests(compiler=args.compiler))
+        if args.skip_tests:
+            test_summary = run_step(
+                "跳过测试执行",
+                lambda: {"total": 0, "failed": 0, "passed": 0, "success": False, "failures": []},
+            )
+        else:
+            test_summary = run_step("执行测试", execute_tests)
+        if args.skip_coverage:
+            coverage = run_step("跳过覆盖率统计", lambda: {"lines": {}, "branches": {}, "functions": {}})
+        else:
+            coverage = run_step("收集覆盖率", collect_coverage)
+        static_result = run_step("静态分析", lambda: run_static_analysis(skip=args.skip_static))
+        run_step("生成 HTML 报告", lambda: render_html(test_summary, coverage, static_result))
+        run_step("生成 XML 报告", lambda: render_xml(test_summary, coverage, static_result))
+    finally:
+        if progress is not None:
+            progress.close()
 
     log("质量报告已生成：" + str(SUMMARY_HTML.relative_to(ROOT)))
 
